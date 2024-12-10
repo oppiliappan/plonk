@@ -1,0 +1,17 @@
+- var now = new Date()
+include ../mixins/head
+include ../mixins/utils
+doctype html
+html
+  +head(paste.title)
+  body
+    main#content
+      h1 #{paste.title}
+      p 
+        | by @#{handle} ·
+        | #{timeDifference(now, Date.parse(paste.createdAt))} ago ·
+        | #{paste.lang} · 
+        | #{paste.code.split('\n').length} loc · 
+        a(href=`/r/${shortUrl}`) raw
+      pre
+        | #{paste.code}

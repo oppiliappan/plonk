@@ -1,0 +1,35 @@
+{
+  "lexicon": 1,
+  "id": "ovh.plonk.paste",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["code", "lang", "title", "createdAt"],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxGraphemes": 65536,
+            "maxLength": 65536
+          },
+          "lang": {
+            "type": "string",
+            "minLength": 1,
+            "maxGraphemes": 20,
+            "maxLength": 20
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxGraphemes": 100,
+            "maxLength": 100
+          },
+          "createdAt": { "type": "string", "format": "datetime" }
+        }
+      }
+    }
+  }
+}

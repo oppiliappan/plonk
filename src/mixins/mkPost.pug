@@ -1,0 +1,16 @@
+include ./utils
+- var greetings = ["plonk your code", "what would you like to plonk today?", "get busy plonkin', or get busy dyin'"]
+- var greeting = greetings[randInt(0, greetings.length - 1)]
+mixin mkPost()
+  form(action='/paste' method="post").post-form
+    div.post-row
+      input#title(type="text" name="title" placeholder="enter a title" required).post-input-title
+      select#lang(name="lang" required).post-input-lang
+        each lang in langs
+          option(value=`${lang}`) #{lang}
+
+    div.post-row
+      textarea#code(name="code" rows="5" placeholder=`${greeting}` required).post-input-code
+
+    div.post-submit-row
+      button(type="submit").post-input-submit plonk!

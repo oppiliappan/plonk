@@ -1,0 +1,47 @@
+include ../mixins/mkPost
+include ../mixins/head
+include ../mixins/utils
+include ../mixins/post
+
+- var now = new Date()
+- 
+  var langs = ["plaintext"]
+      .concat([
+        "javascript",
+        "typescript",
+        "java",
+        "rust",
+        "go",
+        "python",
+        "ruby",
+        "php",
+        "c",
+        "c#",
+        "c++",
+      ].toSorted())
+doctype html
+html
+  +head("timeline")
+  body
+    main#content
+      div.header
+        div.left-side
+          if ownDid
+            | logged in as @#{didHandleMap[ownDid]}
+        div.right-side
+        if ownDid
+          p
+            a(href=`/u/${encodeURIComponent(ownDid)}`) my plonks
+            | &nbsp;·&nbsp;
+            a(href="/logout") logout
+        else
+          p
+            a(href="/login") login
+            |&nbsp;to get plonkin'
+
+      if ownDid
+        +mkPost()
+
+      div.timeline
+        each paste in pastes
+          +post(paste, didHandleMap)

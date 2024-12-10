@@ -1,0 +1,14 @@
+- var now = new Date()
+- var handle = didHandleMap[authorDid]
+include ../mixins/head
+include ../mixins/utils
+include ../mixins/post
+doctype html
+html
+  +head(handle)
+  body
+    main#content
+      h1 plonks by @#{handle}
+      div.timeline
+        each paste in pastes
+          +post(paste, didHandleMap)

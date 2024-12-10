@@ -1,0 +1,16 @@
+mixin post(paste, didHandleMap)
+  div.post
+    p
+      a(href=`/p/${paste.shortUrl}`)
+        | #{paste.title}
+      p.post-info
+        | by 
+        a(href=`/u/${encodeURIComponent(paste.authorDid)}`)
+          | @#{didHandleMap[paste.authorDid]}
+        | &nbsp;·
+        | #{timeDifference(now, Date.parse(paste.createdAt))} ago
+        | ·
+        | #{paste.lang}
+        | ·
+        | #{paste.code.split('\n').length} loc
+

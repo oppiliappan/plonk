@@ -1,0 +1,277 @@
+import path from "node:path";
+import express from "express";
+import { Ctx } from "./";
+import { env } from "#/lib";
+import { getIronSession } from "iron-session";
+import { isValidHandle, AtUri } from "@atproto/syntax";
+import { IncomingMessage, ServerResponse } from "node:http";
+import { Agent } from "@atproto/api";
+import { getPds, DidResolver } from "@atproto/identity";
+import { TID } from "@atproto/common";
+import { newShortUrl } from "#/db";
+
+import * as Paste from "#/lexicons/types/ovh/plonk/paste";
+
+type Session = {
+	did: string;
+};
+
+async function getSessionAgent(
+	req: IncomingMessage,
+	res: ServerResponse<IncomingMessage>,
+	ctx: Ctx,
+) {
+	const session = await getIronSession<Session>(req, res, {
+		cookieName: "plonk-id",
+		password: env.COOKIE_SECRET,
+	});
+	if (!session.did) return null;
+	try {
+		const oauthSession = await ctx.oauthClient.restore(session.did);
+		return oauthSession ? new Agent(oauthSession) : null;
+	} catch (err) {
+		ctx.logger.warn({ err }, "oauth restore failed");
+		session.destroy();
+		return null;
+	}
+}
+
+export const createRouter = (ctx: Ctx) => {
+	const router = express.Router();
+
+	// Static assets
+	router.use(
+		"/public",
+		express.static(path.join(__dirname, "pages", "public")),
+	);
+
+	// OAuth metadata
+	router.get("/client-metadata.json", async (_req, res) => {
+		return res.json(ctx.oauthClient.clientMetadata);
+	});
+
+	router.get("/oauth/callback", async (req, res) => {
+		const params = new URLSearchParams(req.originalUrl.split("?")[1]);
+		try {
+			const { session } = await ctx.oauthClient.callback(params);
+			const clientSession = await getIronSession<Session>(req, res, {
+				cookieName: "plonk-id",
+				password: env.COOKIE_SECRET,
+			});
+			ctx.logger.info(clientSession.did, "client session did");
+			//assert(!clientSession.did, "session already exists");
+			clientSession.did = session.did;
+			await clientSession.save();
+		} catch (err) {
+			ctx.logger.error({ err }, "oauth callback failed");
+			return res.redirect("/?error");
+		}
+		return res.redirect("/");
+	});
+
+	// GET login
+	router.get("/login", async (req, res) => {
+		return res.render("login");
+	});
+	router.post("/login", async (req, res) => {
+		const agent = await getSessionAgent(req, res, ctx);
+		if (agent) {
+			return res.redirect("/");
+		}
+		const handle = req.body?.handle;
+		if (typeof handle !== "string" || !isValidHandle(handle)) {
+			return res.redirect("/login");
+		}
+
+		try {
+			const url = await ctx.oauthClient.authorize(handle, {
+				scope: "atproto transition:generic",
+			});
+			return res.redirect(url.toString());
+		} catch (err) {
+			ctx.logger.error({ err }, "oauth authorize failed");
+			return res.redirect("/login");
+		}
+	});
+
+	router.get("/logout", async (req, res) => {
+		const session = await getIronSession<Session>(req, res, {
+			cookieName: "plonk-id",
+			password: env.COOKIE_SECRET,
+		});
+		session.destroy();
+		return res.redirect("/");
+	});
+
+	router.get("/", async (req, res) => {
+		const agent = await getSessionAgent(req, res, ctx);
+		const pastes = await ctx.db
+			.selectFrom("paste")
+			.selectAll()
+			.orderBy("indexedAt", "desc")
+			.limit(25)
+			.execute();
+
+		// Map user DIDs to their domain-name handles
+		const didHandleMap = await ctx.resolver.resolveDidsToHandles(
+			pastes.map((s) => s.authorDid),
+		);
+
+		if (!agent) {
+			return res.render("index", { pastes, didHandleMap });
+		}
+
+		return res.render("index", {
+			pastes,
+			ownDid: agent.assertDid,
+			didHandleMap,
+		});
+	});
+
+	router.get("/u/:authorDid", async (req, res) => {
+		const { authorDid } = req.params;
+		const pastes = await ctx.db
+			.selectFrom("paste")
+			.selectAll()
+			.where("authorDid", "=", authorDid)
+			.orderBy("indexedAt", "desc")
+			.execute();
+		let didHandleMap = {};
+		didHandleMap[authorDid] = await ctx.resolver.resolveDidToHandle(authorDid);
+		return res.render("user", { pastes, authorDid, didHandleMap });
+	});
+
+	router.get("/p/:shortUrl", async (req, res) => {
+		const { shortUrl } = req.params;
+		const ret = await ctx.db
+			.selectFrom("paste")
+			.where("shortUrl", "=", shortUrl)
+			.select(["authorDid", "uri"])
+			.executeTakeFirst();
+		if (!ret) {
+			return res.status(404);
+		}
+		const { authorDid: did, uri } = ret;
+		const handle = await ctx.resolver.resolveDidToHandle(did);
+		const resolver = new DidResolver({});
+		const didDocument = await resolver.resolve(did);
+		if (!didDocument) {
+			return res.status(404);
+		}
+		const pds = getPds(didDocument);
+		if (!pds) {
+			return res.status(404);
+		}
+		const aturi = new AtUri(uri);
+		const url = new URL(`${pds}/xrpc/com.atproto.repo.getRecord`);
+		url.searchParams.set("repo", aturi.hostname);
+		url.searchParams.set("collection", aturi.collection);
+		url.searchParams.set("rkey", aturi.rkey);
+
+		const response = await fetch(url.toString());
+
+		if (!response.ok) {
+			return res.status(404);
+		}
+
+		const pasteRecord = await response.json();
+		const paste =
+			Paste.isRecord(pasteRecord.value) &&
+			Paste.validateRecord(pasteRecord.value).success
+				? pasteRecord.value
+				: {};
+
+		return res.render("paste", { paste, handle, shortUrl });
+	});
+
+	router.get("/r/:shortUrl", async (req, res) => {
+		const { shortUrl } = req.params;
+		const ret = await ctx.db
+			.selectFrom("paste")
+			.where("shortUrl", "=", shortUrl)
+			.select(["code"])
+			.executeTakeFirst();
+		if (!ret) {
+			return res.status(404);
+		}
+
+		res.set("Content-Type", "text/plain; charset=utf-8");
+		return res.send(ret.code);
+	});
+
+	router.post("/paste", async (req, res) => {
+		const agent = await getSessionAgent(req, res, ctx);
+		if (!agent) {
+			return res
+				.status(401)
+				.type("html")
+				.send("<h1>Error: Session required</h1>");
+		}
+
+		const rkey = TID.nextStr();
+		const record = {
+			$type: "ovh.plonk.paste",
+			code: req.body?.code,
+			lang: req.body?.lang,
+			title: req.body?.title,
+			createdAt: new Date().toISOString(),
+		};
+
+		if (!Paste.validateRecord(record).success) {
+			return res
+				.status(400)
+				.type("html")
+				.send("<h1>Error: Invalid status</h1>");
+		}
+
+		let uri;
+		try {
+			const res = await agent.com.atproto.repo.putRecord({
+				repo: agent.assertDid,
+				collection: "ovh.plonk.paste",
+				rkey,
+				record,
+				validate: false,
+			});
+			uri = res.data.uri;
+		} catch (err) {
+			ctx.logger.warn({ err }, "failed to put record");
+			return res
+				.status(500)
+				.type("html")
+				.send("<h3>Error: Failed to write record</h1>");
+		}
+
+		try {
+			const shortUrl = await newShortUrl(ctx.db);
+			await ctx.db
+				.insertInto("paste")
+				.values({
+					uri,
+					shortUrl,
+					authorDid: agent.assertDid,
+					code: record.code,
+					lang: record.lang,
+					title: record.title,
+					createdAt: record.createdAt,
+					indexedAt: new Date().toISOString(),
+				})
+				.execute();
+			ctx.logger.info(res, "wrote back to db");
+			return res.redirect(`/p/${shortUrl}`);
+		} catch (err) {
+			ctx.logger.warn(
+				{ err },
+				"failed to update computed view; ignoring as it should be caught by the firehose",
+			);
+		}
+
+		return res.redirect("/");
+	});
+
+	return router;
+};
+
+// https://pds.icyphox.sh/xrpc/com.atproto.repo.getRecord?repo=did%3Aplc%3A3ft67n4xnawzq4qi7mcksxj5
+// at://did:plc:3ft67n4xnawzq4qi7mcksxj5/ovh.plonk.paste/3lcs3lnslbk2d
+// https://pds.icyphox.sh/xrpc/com.atproto.repo.getRecord?repo=did%3Aplc%3A3ft67n4xnawzq4qi7mcksxj5&collection=ovh.plonk.paste&rkey=3lcqt7newvc2c

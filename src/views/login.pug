@@ -1,0 +1,17 @@
+doctype html
+html
+  head
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    meta(charset='UTF-8')
+    title login
+    link(rel="stylesheet", href="/styles.css")
+    link(rel="preconnect" href="https://rsms.me/")
+    link(rel="stylesheet" href="https://rsms.me/inter/inter.css")
+    script(src="https://cdn.dashjs.org/latest/dash.all.min.js")
+  body
+    main#content
+      h1 login
+      form(action='/login' method="post")
+        div.login-row
+          input(type="text" name="handle" placeholder="enter handle" required).login-input-title
+          button(type="submit").login-submit-button login
