@@ -8,9 +8,12 @@ import { IncomingMessage, ServerResponse } from "node:http";
 import { Agent } from "@atproto/api";
 import { getPds, DidResolver } from "@atproto/identity";
 import { TID } from "@atproto/common";
+import { Agent } from "@atproto/api";
 import { newShortUrl } from "#/db";
 
 import * as Paste from "#/lexicons/types/ovh/plonk/paste";
+import * as Comment from "#/lexicons/types/ovh/plonk/comment";
+import { ComAtprotoRepoNS } from "#/lexicons";
 
 type Session = {
 	did: string;
@@ -114,7 +117,7 @@ export const createRouter = (ctx: Ctx) => {
 
 		// Map user DIDs to their domain-name handles
 		const didHandleMap = await ctx.resolver.resolveDidsToHandles(
-			pastes.map((s) => s.authorDid),
+			pastes.map((s) => s.authorDid).concat(agent? [agent.assertDid]:[]),
 		);
 
 		if (!agent) {
@@ -130,12 +133,22 @@ export const createRouter = (ctx: Ctx) => {
 
 	router.get("/u/:authorDid", async (req, res) => {
 		const { authorDid } = req.params;
-		const pastes = await ctx.db
-			.selectFrom("paste")
-			.selectAll()
-			.where("authorDid", "=", authorDid)
-			.orderBy("indexedAt", "desc")
-			.execute();
+		const resolver = new DidResolver({});
+		const didDocument = await resolver.resolve(authorDid);
+		if (!didDocument) {
+			return res.status(404);
+		}
+		const pds = getPds(didDocument);
+		if (!pds) {
+			return res.status(404);
+		}
+		const agent = new Agent(pds);
+		const response = await agent.com.atproto.repo.listRecords({
+			repo: authorDid,
+			collection: 'ovh.plonk.paste',
+			limit: 99,
+		});
+		const pastes = response.data.records;
 		let didHandleMap = {};
 		didHandleMap[authorDid] = await ctx.resolver.resolveDidToHandle(authorDid);
 		return res.render("user", { pastes, authorDid, didHandleMap });
@@ -151,8 +164,15 @@ export const createRouter = (ctx: Ctx) => {
 		if (!ret) {
 			return res.status(404);
 		}
+		var comments = await ctx.db
+			.selectFrom("comment")
+			.selectAll()
+			.where("pasteUri", '=', ret.uri)
+			.execute();
 		const { authorDid: did, uri } = ret;
-		const handle = await ctx.resolver.resolveDidToHandle(did);
+		const didHandleMap = await ctx.resolver.resolveDidsToHandles(
+			comments.map((c) => c.authorDid).concat([did]),
+		)
 		const resolver = new DidResolver({});
 		const didDocument = await resolver.resolve(did);
 		if (!didDocument) {
@@ -162,28 +182,26 @@ export const createRouter = (ctx: Ctx) => {
 		if (!pds) {
 			return res.status(404);
 		}
+		const agent = new Agent(pds);
 		const aturi = new AtUri(uri);
-		const url = new URL(`${pds}/xrpc/com.atproto.repo.getRecord`);
-		url.searchParams.set("repo", aturi.hostname);
-		url.searchParams.set("collection", aturi.collection);
-		url.searchParams.set("rkey", aturi.rkey);
+		const response = await agent.com.atproto.repo.getRecord({
+			repo: aturi.hostname,
+			collection: aturi.collection,
+			rkey: aturi.rkey
+		});
 
-		const response = await fetch(url.toString());
-
-		if (!response.ok) {
-			return res.status(404);
-		}
-
-		const pasteRecord = await response.json();
 		const paste =
-			Paste.isRecord(pasteRecord.value) &&
-			Paste.validateRecord(pasteRecord.value).success
-				? pasteRecord.value
+			Paste.isRecord(response.data.value) &&
+			Paste.validateRecord(response.data.value).success
+				? response.data.value
 				: {};
 
-		return res.render("paste", { paste, handle, shortUrl });
+		return res.render("paste", { paste, authorDid: did, uri: response.data.uri, didHandleMap, shortUrl, comments });
 	});
 
+	router.get("/p/:shortUrl/raw", async (req, res) => {
+		res.redirect(`/r/${req.params.shortUrl}`)
+	});
 	router.get("/r/:shortUrl", async (req, res) => {
 		const { shortUrl } = req.params;
 		const ret = await ctx.db
@@ -199,6 +217,28 @@ export const createRouter = (ctx: Ctx) => {
 		return res.send(ret.code);
 	});
 
+	router.get("/reset", async (req, res) => {
+		const agent = await getSessionAgent(req, res, ctx);
+		if (!agent) {
+			return res.redirect('/');
+		}
+		const response = await agent.com.atproto.repo.listRecords({
+			repo: agent.assertDid,
+			collection: 'ovh.plonk.paste',
+			limit: 10,
+		});
+		const vals = response.data.records;
+		for (const v of vals) {
+			const aturl = new AtUri(v.uri);
+			await agent.com.atproto.repo.deleteRecord({
+				repo: agent.assertDid,
+				collection: aturl.collection,
+				rkey: aturl.rkey,
+			});
+		}
+		return res.redirect('/');
+	});
+
 	router.post("/paste", async (req, res) => {
 		const agent = await getSessionAgent(req, res, ctx);
 		if (!agent) {
@@ -209,10 +249,12 @@ export const createRouter = (ctx: Ctx) => {
 		}
 
 		const rkey = TID.nextStr();
+		const shortUrl = await newShortUrl(ctx.db);
 		const record = {
 			$type: "ovh.plonk.paste",
 			code: req.body?.code,
 			lang: req.body?.lang,
+			shortUrl,
 			title: req.body?.title,
 			createdAt: new Date().toISOString(),
 		};
@@ -259,6 +301,93 @@ export const createRouter = (ctx: Ctx) => {
 				.execute();
 			ctx.logger.info(res, "wrote back to db");
 			return res.redirect(`/p/${shortUrl}`);
+		} catch (err) {
+			ctx.logger.warn(
+				{ err },
+				"failed to update computed view; ignoring as it should be caught by the firehose",
+			);
+		}
+
+		return res.redirect("/");
+	});
+
+	router.post("/:paste/comment", async (req, res) => {
+		const agent = await getSessionAgent(req, res, ctx);
+
+		if (!agent) {
+			return res
+				.status(401)
+				.type("html")
+				.send("<h1>Error: Session required</h1>");
+		}
+		
+		const pasteUri = req.params.paste;
+		const aturi = new AtUri(pasteUri);
+		const pasteResponse = await agent.com.atproto.repo.getRecord({
+			repo: aturi.hostname,
+			collection: aturi.collection,
+			rkey: aturi.rkey
+		});
+		const pasteCid = pasteResponse.data.cid;
+		if (!pasteCid) {
+			return res
+				.status(401)
+				.type("html")
+				.send("invalid paste");
+		}
+
+		const rkey = TID.nextStr();
+		const record = {
+			$type: "ovh.plonk.comment",
+			content: req.body?.comment,
+			post: {
+				uri: pasteUri,
+				cid: pasteCid
+			},
+			createdAt: new Date().toISOString(),
+		};
+
+		if (!Comment.validateRecord(record).success) {
+			return res
+				.status(400)
+				.type("html")
+				.send("<h1>Error: Invalid status</h1>");
+		}
+
+		let uri;
+		try {
+			const res = await agent.com.atproto.repo.putRecord({
+				repo: agent.assertDid,
+				collection: "ovh.plonk.comment",
+				rkey,
+				record,
+				validate: false,
+			});
+			uri = res.data.uri;
+		} catch (err) {
+			ctx.logger.warn({ err }, "failed to put record");
+			return res
+				.status(500)
+				.type("html")
+				.send("<h3>Error: Failed to write record</h1>");
+		}
+
+		try {
+			await ctx.db
+				.insertInto("comment")
+				.values({
+					uri,
+					body: record.content,
+					authorDid: agent.assertDid,
+					pasteUri: record.post.uri,
+					pasteCid: record.post.cid,
+					createdAt: record.createdAt,
+					indexedAt: new Date().toISOString(),
+				})
+				.execute();
+			ctx.logger.info(res, "wrote back to db");
+			const originalPaste = await ctx.db.selectFrom('paste').selectAll().where('uri', '=', pasteUri).executeTakeFirst();
+			return res.redirect(`/p/${originalPaste.shortUrl}#${encodeURIComponent(uri)}`);
 		} catch (err) {
 			ctx.logger.warn(
 				{ err },

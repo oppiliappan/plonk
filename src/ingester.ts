@@ -2,8 +2,8 @@ import pino from "pino";
 import { IdResolver } from "@atproto/identity";
 import { Firehose } from "@atproto/sync";
 import type { Database } from "#/db";
-import { newShortUrl } from "#/db";
 import * as Paste from "#/lexicons/types/ovh/plonk/paste";
+import * as Comment from "#/lexicons/types/ovh/plonk/comment";
 
 export function createIngester(db: Database, idResolver: IdResolver) {
 	const logger = pino({ name: "firehose ingestion" });
@@ -21,13 +21,11 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 					Paste.isRecord(record) &&
 					Paste.validateRecord(record).success
 				) {
-					// Store the status in our SQLite
-					const short_url = await newShortUrl(db);
 					await db
 						.insertInto("paste")
 						.values({
 							uri: evt.uri.toString(),
-							shortUrl,
+							shortUrl: record.shortUrl,
 							authorDid: evt.did,
 							code: record.code,
 							lang: record.lang,
@@ -44,6 +42,31 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 							}),
 						)
 						.execute();
+				} else if (
+					evt.collection === "ovh.plonk.comment" &&
+					Comment.isRecord(record) &&
+					Comment.validateRecord(record).success
+				) {
+					await db
+						.insertInto("comment")
+						.values({
+							uri: evt.uri.toString(),
+							authorDid: evt.did,
+							body: record.content,
+							pasteUri: record.post.uri,
+							pasteCid: record.post.cid,
+							createdAt: record.createdAt,
+							indexedAt: now.toISOString(),
+						})
+						.onConflict((oc) =>
+							oc.column("uri").doUpdateSet({
+								body: record.content,
+								pasteUri: record.post.uri,
+								pasteCid: record.post.cid,
+								indexedAt: now.toISOString(),
+							}),
+						)
+						.execute();
 				}
 			} else if (
 				evt.event === "delete" &&
@@ -54,7 +77,16 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 					.deleteFrom("paste")
 					.where("uri", "=", evt.uri.toString())
 					.execute();
-			}
+			} else if (
+				evt.event === "delete" &&
+				evt.collection === "ovh.plonk.comment"
+			) {
+				// Remove the status from our SQLite
+				await db
+					.deleteFrom("comment")
+					.where("uri", "=", evt.uri.toString())
+					.execute();
+			} 
 		},
 		onError: (err) => {
 			logger.error({ err }, "error on firehose ingestion");

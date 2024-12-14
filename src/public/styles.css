@@ -127,7 +127,7 @@ hr {
   align-self: flex-end;
 }
 
-.timeline {
+.timeline, .comments {
   display: flex;
   flex-direction: column;
   gap: 1rem;

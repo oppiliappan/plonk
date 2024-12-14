@@ -11,4 +11,4 @@ html
       h1 plonks by @#{handle}
       div.timeline
         each paste in pastes
-          +post(paste, didHandleMap)
+          +post(paste.value, handle, authorDid)

@@ -4,6 +4,37 @@
 import { LexiconDoc, Lexicons } from '@atproto/lexicon'
 
 export const schemaDict = {
+  OvhPlonkComment: {
+    lexicon: 1,
+    id: 'ovh.plonk.comment',
+    defs: {
+      main: {
+        type: 'record',
+        key: 'tid',
+        record: {
+          type: 'object',
+          required: ['content', 'createdAt', 'post'],
+          properties: {
+            content: {
+              type: 'string',
+              maxLength: 100000,
+              maxGraphemes: 10000,
+              description: 'comment body',
+            },
+            createdAt: {
+              type: 'string',
+              format: 'datetime',
+              description: 'comment creation timestamp',
+            },
+            post: {
+              type: 'ref',
+              ref: 'lex:com.atproto.repo.strongRef',
+            },
+          },
+        },
+      },
+    },
+  },
   ComAtprotoLabelDefs: {
     lexicon: 1,
     id: 'com.atproto.label.defs',
@@ -183,6 +214,155 @@ export const schemaDict = {
       },
     },
   },
+  ComAtprotoRepoGetRecord: {
+    lexicon: 1,
+    id: 'com.atproto.repo.getRecord',
+    defs: {
+      main: {
+        type: 'query',
+        description:
+          'Get a single record from a repository. Does not require auth.',
+        parameters: {
+          type: 'params',
+          required: ['repo', 'collection', 'rkey'],
+          properties: {
+            repo: {
+              type: 'string',
+              format: 'at-identifier',
+              description: 'The handle or DID of the repo.',
+            },
+            collection: {
+              type: 'string',
+              format: 'nsid',
+              description: 'The NSID of the record collection.',
+            },
+            rkey: {
+              type: 'string',
+              description: 'The Record Key.',
+            },
+            cid: {
+              type: 'string',
+              format: 'cid',
+              description:
+                'The CID of the version of the record. If not specified, then return the most recent version.',
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['uri', 'value'],
+            properties: {
+              uri: {
+                type: 'string',
+                format: 'at-uri',
+              },
+              cid: {
+                type: 'string',
+                format: 'cid',
+              },
+              value: {
+                type: 'unknown',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'RecordNotFound',
+          },
+        ],
+      },
+    },
+  },
+  ComAtprotoRepoListRecords: {
+    lexicon: 1,
+    id: 'com.atproto.repo.listRecords',
+    defs: {
+      main: {
+        type: 'query',
+        description:
+          'List a range of records in a repository, matching a specific collection. Does not require auth.',
+        parameters: {
+          type: 'params',
+          required: ['repo', 'collection'],
+          properties: {
+            repo: {
+              type: 'string',
+              format: 'at-identifier',
+              description: 'The handle or DID of the repo.',
+            },
+            collection: {
+              type: 'string',
+              format: 'nsid',
+              description: 'The NSID of the record type.',
+            },
+            limit: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 100,
+              default: 50,
+              description: 'The number of records to return.',
+            },
+            cursor: {
+              type: 'string',
+            },
+            rkeyStart: {
+              type: 'string',
+              description:
+                'DEPRECATED: The lowest sort-ordered rkey to start from (exclusive)',
+            },
+            rkeyEnd: {
+              type: 'string',
+              description:
+                'DEPRECATED: The highest sort-ordered rkey to stop at (exclusive)',
+            },
+            reverse: {
+              type: 'boolean',
+              description: 'Flag to reverse the order of the returned records.',
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['records'],
+            properties: {
+              cursor: {
+                type: 'string',
+              },
+              records: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'lex:com.atproto.repo.listRecords#record',
+                },
+              },
+            },
+          },
+        },
+      },
+      record: {
+        type: 'object',
+        required: ['uri', 'cid', 'value'],
+        properties: {
+          uri: {
+            type: 'string',
+            format: 'at-uri',
+          },
+          cid: {
+            type: 'string',
+            format: 'cid',
+          },
+          value: {
+            type: 'unknown',
+          },
+        },
+      },
+    },
+  },
   OvhPlonkPaste: {
     lexicon: 1,
     id: 'ovh.plonk.paste',
@@ -192,13 +372,19 @@ export const schemaDict = {
         key: 'tid',
         record: {
           type: 'object',
-          required: ['code', 'lang', 'title', 'createdAt'],
+          required: ['code', 'shortUrl', 'lang', 'title', 'createdAt'],
           properties: {
             code: {
               type: 'string',
               minLength: 1,
               maxGraphemes: 65536,
               maxLength: 65536,
+            },
+            shortUrl: {
+              type: 'string',
+              minLength: 2,
+              maxGraphemes: 10,
+              maxLength: 10,
             },
             lang: {
               type: 'string',
@@ -301,7 +487,10 @@ export const schemaDict = {
 export const schemas: LexiconDoc[] = Object.values(schemaDict) as LexiconDoc[]
 export const lexicons: Lexicons = new Lexicons(schemas)
 export const ids = {
+  OvhPlonkComment: 'ovh.plonk.comment',
   ComAtprotoLabelDefs: 'com.atproto.label.defs',
+  ComAtprotoRepoGetRecord: 'com.atproto.repo.getRecord',
+  ComAtprotoRepoListRecords: 'com.atproto.repo.listRecords',
   OvhPlonkPaste: 'ovh.plonk.paste',
   AppBskyActorProfile: 'app.bsky.actor.profile',
   ComAtprotoRepoStrongRef: 'com.atproto.repo.strongRef',

@@ -44,4 +44,5 @@ html
 
       div.timeline
         each paste in pastes
-          +post(paste, didHandleMap)
+          - var handle = didHandleMap[paste.authorDid]
+          +post(paste, handle, paste.authorDid)

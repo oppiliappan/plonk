@@ -5,13 +5,14 @@ import { ValidationResult, BlobRef } from '@atproto/lexicon'
 import { lexicons } from '../../../lexicons'
 import { isObj, hasProp } from '../../../util'
 import { CID } from 'multiformats/cid'
+import * as ComAtprotoRepoStrongRef from '../../com/atproto/repo/strongRef'
 
 export interface Record {
-  code: string
-  shortUrl: string
-  lang: string
-  title: string
+  /** comment body */
+  content: string
+  /** comment creation timestamp */
   createdAt: string
+  post: ComAtprotoRepoStrongRef.Main
   [k: string]: unknown
 }
 
@@ -19,10 +20,10 @@ export function isRecord(v: unknown): v is Record {
   return (
     isObj(v) &&
     hasProp(v, '$type') &&
-    (v.$type === 'ovh.plonk.paste#main' || v.$type === 'ovh.plonk.paste')
+    (v.$type === 'ovh.plonk.comment#main' || v.$type === 'ovh.plonk.comment')
   )
 }
 
 export function validateRecord(v: unknown): ValidationResult {
-  return lexicons.validate('ovh.plonk.paste#main', v)
+  return lexicons.validate('ovh.plonk.comment#main', v)
 }

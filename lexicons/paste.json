@@ -7,13 +7,25 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["code", "lang", "title", "createdAt"],
+        "required": [
+          "code",
+          "shortUrl",
+          "lang",
+          "title",
+          "createdAt"
+        ],
         "properties": {
           "code": {
             "type": "string",
             "minLength": 1,
             "maxGraphemes": 65536,
             "maxLength": 65536
+          },
+          "shortUrl": {
+            "type": "string",
+            "minLength": 2,
+            "maxGraphemes": 10,
+            "maxLength": 10
           },
           "lang": {
             "type": "string",
@@ -27,7 +39,10 @@
             "maxGraphemes": 100,
             "maxLength": 100
           },
-          "createdAt": { "type": "string", "format": "datetime" }
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
         }
       }
     }

@@ -1,5 +1,6 @@
 import SqliteDb from "better-sqlite3";
 import { randomBytes } from "crypto";
+import e from "express";
 
 import {
 	Kysely,
@@ -12,6 +13,7 @@ import { isNumber } from "util";
 
 export type DatabaseSchema = {
 	paste: Paste;
+	comment: Comment;
 	auth_state: AuthState;
 	auth_session: AuthSession;
 };
@@ -19,6 +21,7 @@ export type DatabaseSchema = {
 export type Paste = {
 	uri: string;
 	authorDid: string;
+	shortUrl: string;
 	code: string;
 	lang: string;
 	title: string;
@@ -35,6 +38,16 @@ export type AuthState = {
 	key: string;
 	state: AuthStateJson;
 };
+
+export type Comment = {
+	uri: string;
+	authorDid: string;
+	body: string;
+	createdAt: string;
+	indexedAt: string;
+	pasteUri: string;
+	pasteCid: string;
+}
 
 type AuthSessionJson = string;
 type AuthStateJson = string;
@@ -85,6 +98,24 @@ migrations["001"] = {
 		await db.schema.dropTable("paste").execute();
 	},
 };
+
+migrations["002"] = {
+	async up(db: Kysely<unknown>) {
+		await db.schema
+			.createTable("comment")
+			.addColumn("uri", "varchar", (col) => col.primaryKey())
+			.addColumn("authorDid", "varchar", (col) => col.notNull())
+			.addColumn("body", "varchar", (col) => col.notNull())
+			.addColumn("createdAt", "varchar", (col) => col.notNull())
+			.addColumn("indexedAt", "varchar", (col) => col.notNull())
+			.addColumn("pasteUri", "varchar", (col) => col.notNull())
+			.addColumn("pasteCid", "varchar", (col) => col.notNull())
+			.execute();
+	},
+	async down(db: Kysely<unknown>) {
+		await db.schema.dropTable("comments").execute();
+	},
+}
 
 function generateShortString(length: number): string {
 	return randomBytes(length).toString("base64url").substring(0, length);
