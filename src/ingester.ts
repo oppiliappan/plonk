@@ -86,7 +86,7 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 					.deleteFrom("comment")
 					.where("uri", "=", evt.uri.toString())
 					.execute();
-			} 
+			}
 		},
 		onError: (err) => {
 			logger.error({ err }, "error on firehose ingestion");

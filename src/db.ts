@@ -47,7 +47,7 @@ export type Comment = {
 	indexedAt: string;
 	pasteUri: string;
 	pasteCid: string;
-}
+};
 
 type AuthSessionJson = string;
 type AuthStateJson = string;
@@ -115,7 +115,7 @@ migrations["002"] = {
 	async down(db: Kysely<unknown>) {
 		await db.schema.dropTable("comments").execute();
 	},
-}
+};
 
 function generateShortString(length: number): string {
 	return randomBytes(length).toString("base64url").substring(0, length);

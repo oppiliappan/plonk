@@ -1,11 +1,13 @@
 - var now = new Date()
 include ../mixins/head
+include ../mixins/header
 include ../mixins/utils
 doctype html
 html
   +head(paste.title)
   body
     main#content
+      +header(ownDid, didHandleMap)
       h1 #{paste.title}
       p 
         | by @#{didHandleMap[authorDid]} ·

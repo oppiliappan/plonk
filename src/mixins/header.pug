@@ -1,0 +1,17 @@
+mixin header(ownDid, didHandleMap)
+  div.header
+    div.left-side
+      if ownDid
+        | logged in as @#{didHandleMap[ownDid]}
+    div.right-side
+    p
+      a(href="/") home
+      | &nbsp;·&nbsp;
+      if ownDid
+        a(href=`/u/${encodeURIComponent(ownDid)}`) my plonks
+        | &nbsp;·&nbsp;
+        a(href="/logout") logout
+      else
+        a(href="/login") login
+        |&nbsp;to get plonkin'
+

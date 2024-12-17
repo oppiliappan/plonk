@@ -1,5 +1,6 @@
 include ../mixins/mkPost
 include ../mixins/head
+include ../mixins/header
 include ../mixins/utils
 include ../mixins/post
 
@@ -24,20 +25,7 @@ html
   +head("timeline")
   body
     main#content
-      div.header
-        div.left-side
-          if ownDid
-            | logged in as @#{didHandleMap[ownDid]}
-        div.right-side
-        if ownDid
-          p
-            a(href=`/u/${encodeURIComponent(ownDid)}`) my plonks
-            | &nbsp;·&nbsp;
-            a(href="/logout") logout
-        else
-          p
-            a(href="/login") login
-            |&nbsp;to get plonkin'
+      +header(ownDid, didHandleMap)
 
       if ownDid
         +mkPost()

@@ -61,7 +61,6 @@ export const createRouter = (ctx: Ctx) => {
 				cookieName: "plonk-id",
 				password: env.COOKIE_SECRET,
 			});
-			ctx.logger.info(clientSession.did, "client session did");
 			//assert(!clientSession.did, "session already exists");
 			clientSession.did = session.did;
 			await clientSession.save();
@@ -117,7 +116,7 @@ export const createRouter = (ctx: Ctx) => {
 
 		// Map user DIDs to their domain-name handles
 		const didHandleMap = await ctx.resolver.resolveDidsToHandles(
-			pastes.map((s) => s.authorDid).concat(agent? [agent.assertDid]:[]),
+			pastes.map((s) => s.authorDid).concat(agent ? [agent.assertDid] : []),
 		);
 
 		if (!agent) {
@@ -145,13 +144,20 @@ export const createRouter = (ctx: Ctx) => {
 		const agent = new Agent(pds);
 		const response = await agent.com.atproto.repo.listRecords({
 			repo: authorDid,
-			collection: 'li.plonk.paste',
+			collection: "li.plonk.paste",
 			limit: 99,
 		});
 		const pastes = response.data.records;
 		let didHandleMap = {};
 		didHandleMap[authorDid] = await ctx.resolver.resolveDidToHandle(authorDid);
-		return res.render("user", { pastes, authorDid, didHandleMap });
+		const ownAgent = await getSessionAgent(req, res, ctx);
+		if (!ownAgent) {
+			return res.render("user", { pastes, authorDid, didHandleMap });
+		} else {
+			const ownDid = ownAgent.assertDid;
+			didHandleMap[ownDid] = await ctx.resolver.resolveDidToHandle(ownDid);
+			return res.render("user", { pastes, authorDid, ownDid, didHandleMap });
+		}
 	});
 
 	router.get("/p/:shortUrl", async (req, res) => {
@@ -167,12 +173,12 @@ export const createRouter = (ctx: Ctx) => {
 		var comments = await ctx.db
 			.selectFrom("comment")
 			.selectAll()
-			.where("pasteUri", '=', ret.uri)
+			.where("pasteUri", "=", ret.uri)
 			.execute();
 		const { authorDid: did, uri } = ret;
-		const didHandleMap = await ctx.resolver.resolveDidsToHandles(
+		let didHandleMap = await ctx.resolver.resolveDidsToHandles(
 			comments.map((c) => c.authorDid).concat([did]),
-		)
+		);
 		const resolver = new DidResolver({});
 		const didDocument = await resolver.resolve(did);
 		if (!didDocument) {
@@ -187,7 +193,7 @@ export const createRouter = (ctx: Ctx) => {
 		const response = await agent.com.atproto.repo.getRecord({
 			repo: aturi.hostname,
 			collection: aturi.collection,
-			rkey: aturi.rkey
+			rkey: aturi.rkey,
 		});
 
 		const paste =
@@ -196,11 +202,33 @@ export const createRouter = (ctx: Ctx) => {
 				? response.data.value
 				: {};
 
-		return res.render("paste", { paste, authorDid: did, uri: response.data.uri, didHandleMap, shortUrl, comments });
+		const ownAgent = await getSessionAgent(req, res, ctx);
+		if (!ownAgent) {
+			return res.render("paste", {
+				paste,
+				authorDid: did,
+				uri: response.data.uri,
+				didHandleMap,
+				shortUrl,
+				comments,
+			});
+		} else {
+			const ownDid = ownAgent.assertDid;
+			didHandleMap[ownDid] = await ctx.resolver.resolveDidToHandle(ownDid);
+			return res.render("paste", {
+				paste,
+				authorDid: did,
+				uri: response.data.uri,
+				ownDid,
+				didHandleMap,
+				shortUrl,
+				comments,
+			});
+		}
 	});
 
 	router.get("/p/:shortUrl/raw", async (req, res) => {
-		res.redirect(`/r/${req.params.shortUrl}`)
+		res.redirect(`/r/${req.params.shortUrl}`);
 	});
 	router.get("/r/:shortUrl", async (req, res) => {
 		const { shortUrl } = req.params;
@@ -220,11 +248,11 @@ export const createRouter = (ctx: Ctx) => {
 	router.get("/reset", async (req, res) => {
 		const agent = await getSessionAgent(req, res, ctx);
 		if (!agent) {
-			return res.redirect('/');
+			return res.redirect("/");
 		}
 		const response = await agent.com.atproto.repo.listRecords({
 			repo: agent.assertDid,
-			collection: 'li.plonk.paste',
+			collection: "li.plonk.paste",
 			limit: 10,
 		});
 		const vals = response.data.records;
@@ -236,7 +264,7 @@ export const createRouter = (ctx: Ctx) => {
 				rkey: aturl.rkey,
 			});
 		}
-		return res.redirect('/');
+		return res.redirect("/");
 	});
 
 	router.post("/paste", async (req, res) => {
@@ -319,20 +347,17 @@ export const createRouter = (ctx: Ctx) => {
 				.type("html")
 				.send("<h1>Error: Session required</h1>");
 		}
-		
+
 		const pasteUri = req.params.paste;
 		const aturi = new AtUri(pasteUri);
 		const pasteResponse = await agent.com.atproto.repo.getRecord({
 			repo: aturi.hostname,
 			collection: aturi.collection,
-			rkey: aturi.rkey
+			rkey: aturi.rkey,
 		});
 		const pasteCid = pasteResponse.data.cid;
 		if (!pasteCid) {
-			return res
-				.status(401)
-				.type("html")
-				.send("invalid paste");
+			return res.status(401).type("html").send("invalid paste");
 		}
 
 		const rkey = TID.nextStr();
@@ -341,7 +366,7 @@ export const createRouter = (ctx: Ctx) => {
 			content: req.body?.comment,
 			post: {
 				uri: pasteUri,
-				cid: pasteCid
+				cid: pasteCid,
 			},
 			createdAt: new Date().toISOString(),
 		};
@@ -384,9 +409,14 @@ export const createRouter = (ctx: Ctx) => {
 					indexedAt: new Date().toISOString(),
 				})
 				.execute();
-			ctx.logger.info(res, "wrote back to db");
-			const originalPaste = await ctx.db.selectFrom('paste').selectAll().where('uri', '=', pasteUri).executeTakeFirst();
-			return res.redirect(`/p/${originalPaste.shortUrl}#${encodeURIComponent(uri)}`);
+			const originalPaste = await ctx.db
+				.selectFrom("paste")
+				.selectAll()
+				.where("uri", "=", pasteUri)
+				.executeTakeFirst();
+			return res.redirect(
+				`/p/${originalPaste.shortUrl}#${encodeURIComponent(uri)}`,
+			);
 		} catch (err) {
 			ctx.logger.warn(
 				{ err },
