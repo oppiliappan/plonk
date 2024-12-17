@@ -18,29 +18,29 @@ export function createServer(options?: XrpcOptions): Server {
 
 export class Server {
   xrpc: XrpcServer
-  ovh: OvhNS
+  li: LiNS
   com: ComNS
   app: AppNS
 
   constructor(options?: XrpcOptions) {
     this.xrpc = createXrpcServer(schemas, options)
-    this.ovh = new OvhNS(this)
+    this.li = new LiNS(this)
     this.com = new ComNS(this)
     this.app = new AppNS(this)
   }
 }
 
-export class OvhNS {
+export class LiNS {
   _server: Server
-  plonk: OvhPlonkNS
+  plonk: LiPlonkNS
 
   constructor(server: Server) {
     this._server = server
-    this.plonk = new OvhPlonkNS(server)
+    this.plonk = new LiPlonkNS(server)
   }
 }
 
-export class OvhPlonkNS {
+export class LiPlonkNS {
   _server: Server
 
   constructor(server: Server) {

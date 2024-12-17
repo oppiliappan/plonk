@@ -4,9 +4,9 @@
 import { LexiconDoc, Lexicons } from '@atproto/lexicon'
 
 export const schemaDict = {
-  OvhPlonkComment: {
+  LiPlonkComment: {
     lexicon: 1,
-    id: 'ovh.plonk.comment',
+    id: 'li.plonk.comment',
     defs: {
       main: {
         type: 'record',
@@ -363,9 +363,9 @@ export const schemaDict = {
       },
     },
   },
-  OvhPlonkPaste: {
+  LiPlonkPaste: {
     lexicon: 1,
-    id: 'ovh.plonk.paste',
+    id: 'li.plonk.paste',
     defs: {
       main: {
         type: 'record',
@@ -487,11 +487,11 @@ export const schemaDict = {
 export const schemas: LexiconDoc[] = Object.values(schemaDict) as LexiconDoc[]
 export const lexicons: Lexicons = new Lexicons(schemas)
 export const ids = {
-  OvhPlonkComment: 'ovh.plonk.comment',
+  LiPlonkComment: 'li.plonk.comment',
   ComAtprotoLabelDefs: 'com.atproto.label.defs',
   ComAtprotoRepoGetRecord: 'com.atproto.repo.getRecord',
   ComAtprotoRepoListRecords: 'com.atproto.repo.listRecords',
-  OvhPlonkPaste: 'ovh.plonk.paste',
+  LiPlonkPaste: 'li.plonk.paste',
   AppBskyActorProfile: 'app.bsky.actor.profile',
   ComAtprotoRepoStrongRef: 'com.atproto.repo.strongRef',
 }

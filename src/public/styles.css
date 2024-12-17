@@ -147,3 +147,10 @@ hr {
   justify-content: space-between;
   align-items: center;
 }
+
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  text-indent: 1px;
+  text-overflow: '';
+}

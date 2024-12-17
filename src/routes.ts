@@ -11,8 +11,8 @@ import { TID } from "@atproto/common";
 import { Agent } from "@atproto/api";
 import { newShortUrl } from "#/db";
 
-import * as Paste from "#/lexicons/types/ovh/plonk/paste";
-import * as Comment from "#/lexicons/types/ovh/plonk/comment";
+import * as Paste from "#/lexicons/types/li/plonk/paste";
+import * as Comment from "#/lexicons/types/li/plonk/comment";
 import { ComAtprotoRepoNS } from "#/lexicons";
 
 type Session = {
@@ -145,7 +145,7 @@ export const createRouter = (ctx: Ctx) => {
 		const agent = new Agent(pds);
 		const response = await agent.com.atproto.repo.listRecords({
 			repo: authorDid,
-			collection: 'ovh.plonk.paste',
+			collection: 'li.plonk.paste',
 			limit: 99,
 		});
 		const pastes = response.data.records;
@@ -224,7 +224,7 @@ export const createRouter = (ctx: Ctx) => {
 		}
 		const response = await agent.com.atproto.repo.listRecords({
 			repo: agent.assertDid,
-			collection: 'ovh.plonk.paste',
+			collection: 'li.plonk.paste',
 			limit: 10,
 		});
 		const vals = response.data.records;
@@ -251,7 +251,7 @@ export const createRouter = (ctx: Ctx) => {
 		const rkey = TID.nextStr();
 		const shortUrl = await newShortUrl(ctx.db);
 		const record = {
-			$type: "ovh.plonk.paste",
+			$type: "li.plonk.paste",
 			code: req.body?.code,
 			lang: req.body?.lang,
 			shortUrl,
@@ -270,7 +270,7 @@ export const createRouter = (ctx: Ctx) => {
 		try {
 			const res = await agent.com.atproto.repo.putRecord({
 				repo: agent.assertDid,
-				collection: "ovh.plonk.paste",
+				collection: "li.plonk.paste",
 				rkey,
 				record,
 				validate: false,
@@ -299,7 +299,6 @@ export const createRouter = (ctx: Ctx) => {
 					indexedAt: new Date().toISOString(),
 				})
 				.execute();
-			ctx.logger.info(res, "wrote back to db");
 			return res.redirect(`/p/${shortUrl}`);
 		} catch (err) {
 			ctx.logger.warn(
@@ -338,7 +337,7 @@ export const createRouter = (ctx: Ctx) => {
 
 		const rkey = TID.nextStr();
 		const record = {
-			$type: "ovh.plonk.comment",
+			$type: "li.plonk.comment",
 			content: req.body?.comment,
 			post: {
 				uri: pasteUri,
@@ -358,7 +357,7 @@ export const createRouter = (ctx: Ctx) => {
 		try {
 			const res = await agent.com.atproto.repo.putRecord({
 				repo: agent.assertDid,
-				collection: "ovh.plonk.comment",
+				collection: "li.plonk.comment",
 				rkey,
 				record,
 				validate: false,
@@ -400,7 +399,3 @@ export const createRouter = (ctx: Ctx) => {
 
 	return router;
 };
-
-// https://pds.icyphox.sh/xrpc/com.atproto.repo.getRecord?repo=did%3Aplc%3A3ft67n4xnawzq4qi7mcksxj5
-// at://did:plc:3ft67n4xnawzq4qi7mcksxj5/ovh.plonk.paste/3lcs3lnslbk2d
-// https://pds.icyphox.sh/xrpc/com.atproto.repo.getRecord?repo=did%3Aplc%3A3ft67n4xnawzq4qi7mcksxj5&collection=ovh.plonk.paste&rkey=3lcqt7newvc2c

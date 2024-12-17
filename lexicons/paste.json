@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "ovh.plonk.paste",
+  "id": "li.plonk.paste",
   "defs": {
     "main": {
       "type": "record",

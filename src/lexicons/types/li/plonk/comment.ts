@@ -20,10 +20,10 @@ export function isRecord(v: unknown): v is Record {
   return (
     isObj(v) &&
     hasProp(v, '$type') &&
-    (v.$type === 'ovh.plonk.comment#main' || v.$type === 'ovh.plonk.comment')
+    (v.$type === 'li.plonk.comment#main' || v.$type === 'li.plonk.comment')
   )
 }
 
 export function validateRecord(v: unknown): ValidationResult {
-  return lexicons.validate('ovh.plonk.comment#main', v)
+  return lexicons.validate('li.plonk.comment#main', v)
 }

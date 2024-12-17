@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "ovh.plonk.comment",
+  "id": "li.plonk.comment",
   "defs": {
     "main": {
       "type": "record",

@@ -2,8 +2,8 @@ import pino from "pino";
 import { IdResolver } from "@atproto/identity";
 import { Firehose } from "@atproto/sync";
 import type { Database } from "#/db";
-import * as Paste from "#/lexicons/types/ovh/plonk/paste";
-import * as Comment from "#/lexicons/types/ovh/plonk/comment";
+import * as Paste from "#/lexicons/types/li/plonk/paste";
+import * as Comment from "#/lexicons/types/li/plonk/comment";
 
 export function createIngester(db: Database, idResolver: IdResolver) {
 	const logger = pino({ name: "firehose ingestion" });
@@ -17,7 +17,7 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 
 				// If the write is a valid status update
 				if (
-					evt.collection === "ovh.plonk.paste" &&
+					evt.collection === "li.plonk.paste" &&
 					Paste.isRecord(record) &&
 					Paste.validateRecord(record).success
 				) {
@@ -43,7 +43,7 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 						)
 						.execute();
 				} else if (
-					evt.collection === "ovh.plonk.comment" &&
+					evt.collection === "li.plonk.comment" &&
 					Comment.isRecord(record) &&
 					Comment.validateRecord(record).success
 				) {
@@ -70,7 +70,7 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 				}
 			} else if (
 				evt.event === "delete" &&
-				evt.collection === "ovh.plonk.paste"
+				evt.collection === "li.plonk.paste"
 			) {
 				// Remove the status from our SQLite
 				await db
@@ -79,7 +79,7 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 					.execute();
 			} else if (
 				evt.event === "delete" &&
-				evt.collection === "ovh.plonk.comment"
+				evt.collection === "li.plonk.comment"
 			) {
 				// Remove the status from our SQLite
 				await db
@@ -91,7 +91,7 @@ export function createIngester(db: Database, idResolver: IdResolver) {
 		onError: (err) => {
 			logger.error({ err }, "error on firehose ingestion");
 		},
-		filterCollections: ["ovh.plonk.paste"],
+		filterCollections: ["li.plonk.paste"],
 		excludeIdentity: true,
 		excludeAccount: true,
 	});
