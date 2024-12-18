@@ -132,22 +132,11 @@ export const createRouter = (ctx: Ctx) => {
 
 	router.get("/u/:authorDid", async (req, res) => {
 		const { authorDid } = req.params;
-		const resolver = new DidResolver({});
-		const didDocument = await resolver.resolve(authorDid);
-		if (!didDocument) {
-			return res.status(404);
-		}
-		const pds = getPds(didDocument);
-		if (!pds) {
-			return res.status(404);
-		}
-		const agent = new Agent(pds);
-		const response = await agent.com.atproto.repo.listRecords({
-			repo: authorDid,
-			collection: "li.plonk.paste",
-			limit: 99,
-		});
-		const pastes = response.data.records;
+		const pastes = await ctx.db
+			.selectFrom("paste")
+			.selectAll()
+			.where("authorDid", "=", authorDid)
+			.execute();
 		let didHandleMap = {};
 		didHandleMap[authorDid] = await ctx.resolver.resolveDidToHandle(authorDid);
 		const ownAgent = await getSessionAgent(req, res, ctx);
@@ -164,52 +153,65 @@ export const createRouter = (ctx: Ctx) => {
 		const { shortUrl } = req.params;
 		const ret = await ctx.db
 			.selectFrom("paste")
+			.leftJoin("comment", "comment.pasteUri", "paste.uri")
+			.select([
+				"paste.uri as pasteUri",
+				"comment.pasteCid as pasteCid",
+				"paste.authorDid as pasteAuthorDid",
+				"paste.code as pasteCode",
+				"paste.lang as pasteLang",
+				"paste.title as pasteTitle",
+				"paste.createdAt as pasteCreatedAt",
+				"comment.uri as commentUri",
+				"comment.authorDid as commentAuthorDid",
+				"comment.body as commentBody",
+				"comment.createdAt as commentCreatedAt",
+			])
 			.where("shortUrl", "=", shortUrl)
-			.select(["authorDid", "uri"])
-			.executeTakeFirst();
-		if (!ret) {
-			return res.status(404);
-		}
-		var comments = await ctx.db
-			.selectFrom("comment")
-			.selectAll()
-			.where("pasteUri", "=", ret.uri)
 			.execute();
-		const { authorDid: did, uri } = ret;
+		if (ret.length === 0) {
+			return res.status(404);
+		}
+		const {
+			pasteAuthorDid,
+			pasteUri,
+			pasteCode,
+			pasteLang,
+			pasteTitle,
+			pasteCreatedAt,
+		} = ret[0];
 		let didHandleMap = await ctx.resolver.resolveDidsToHandles(
-			comments.map((c) => c.authorDid).concat([did]),
+			[ret[0].pasteAuthorDid].concat(
+				ret.flatMap((row) =>
+					row.commentAuthorDid ? [row.commentAuthorDid] : [],
+				),
+			),
 		);
-		const resolver = new DidResolver({});
-		const didDocument = await resolver.resolve(did);
-		if (!didDocument) {
-			return res.status(404);
-		}
-		const pds = getPds(didDocument);
-		if (!pds) {
-			return res.status(404);
-		}
-		const agent = new Agent(pds);
-		const aturi = new AtUri(uri);
-		const response = await agent.com.atproto.repo.getRecord({
-			repo: aturi.hostname,
-			collection: aturi.collection,
-			rkey: aturi.rkey,
-		});
 
-		const paste =
-			Paste.isRecord(response.data.value) &&
-			Paste.validateRecord(response.data.value).success
-				? response.data.value
-				: {};
+		const paste = {
+			uri: pasteUri,
+			code: pasteCode,
+			title: pasteTitle,
+			lang: pasteLang,
+			shortUrl,
+			createdAt: pasteCreatedAt,
+			authorDid: pasteAuthorDid,
+		};
+
+		const comments = ret.map((row) => {
+			return {
+				uri: row.commentUri,
+				authorDid: row.commentAuthorDid,
+				body: row.commentBody,
+				createdAt: row.commentCreatedAt,
+			};
+		});
 
 		const ownAgent = await getSessionAgent(req, res, ctx);
 		if (!ownAgent) {
 			return res.render("paste", {
 				paste,
-				authorDid: did,
-				uri: response.data.uri,
 				didHandleMap,
-				shortUrl,
 				comments,
 			});
 		} else {
@@ -217,11 +219,8 @@ export const createRouter = (ctx: Ctx) => {
 			didHandleMap[ownDid] = await ctx.resolver.resolveDidToHandle(ownDid);
 			return res.render("paste", {
 				paste,
-				authorDid: did,
-				uri: response.data.uri,
 				ownDid,
 				didHandleMap,
-				shortUrl,
 				comments,
 			});
 		}
