@@ -12,10 +12,10 @@
     nixpkgsFor = forAllSystems (system:
       import nixpkgs {
         inherit system;
-        overlays = [self.overlay.default];
+        overlays = [self.overlays.default];
       });
   in {
-    overlay.default = final: prev: let
+    overlays.default = final: prev: let
       pname = "plonk";
       version = "0.1.0";
     in {
