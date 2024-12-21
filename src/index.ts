@@ -29,10 +29,10 @@ export class Server {
 		public app: express.Application,
 		public server: http.Server,
 		public ctx: Ctx,
-	) {}
+	) { }
 
 	static async create() {
-		const db: Database = createDb(env.DB_PATH);
+		const db: Database = createDb(env.PLONK_DB_PATH);
 		await migrateToLatest(db);
 		const idResolver = createIdResolver();
 		const ctx: Ctx = {
@@ -55,7 +55,7 @@ export class Server {
 		app.use(router);
 		app.use((_req, res) => res.sendStatus(404));
 
-		const server = app.listen(env.PORT);
+		const server = app.listen(env.PLONK_PORT);
 
 		return new Server(app, server, ctx);
 	}
