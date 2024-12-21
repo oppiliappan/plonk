@@ -6,28 +6,32 @@ import { getIronSession } from "iron-session";
 import { isValidHandle, AtUri } from "@atproto/syntax";
 import { IncomingMessage, ServerResponse } from "node:http";
 import { Agent } from "@atproto/api";
-import { getPds, DidResolver } from "@atproto/identity";
 import { TID } from "@atproto/common";
-import { Agent } from "@atproto/api";
 import { newShortUrl } from "#/db";
 
 import * as Paste from "#/lexicons/types/li/plonk/paste";
 import * as Comment from "#/lexicons/types/li/plonk/comment";
-import { ComAtprotoRepoNS } from "#/lexicons";
 
 type Session = {
 	did: string;
 };
+
+async function getSession(req: IncomingMessage, res: ServerResponse<IncomingMessage>) {
+	return await getIronSession<Session>(req, res, {
+		cookieName: "plonk-id",
+		password: env.PLONK_COOKIE_SECRET,
+		cookieOptions: {
+			secure: env.PLONK_NODE_ENV === 'production',
+		},
+	})
+}
 
 async function getSessionAgent(
 	req: IncomingMessage,
 	res: ServerResponse<IncomingMessage>,
 	ctx: Ctx,
 ) {
-	const session = await getIronSession<Session>(req, res, {
-		cookieName: "plonk-id",
-		password: env.PLONK_COOKIE_SECRET,
-	});
+	const session = await getSession(req, res);
 	if (!session.did) return null;
 	try {
 		const oauthSession = await ctx.oauthClient.restore(session.did);
@@ -57,10 +61,7 @@ export const createRouter = (ctx: Ctx) => {
 		const params = new URLSearchParams(req.originalUrl.split("?")[1]);
 		try {
 			const { session } = await ctx.oauthClient.callback(params);
-			const clientSession = await getIronSession<Session>(req, res, {
-				cookieName: "plonk-id",
-				password: env.PLONK_COOKIE_SECRET,
-			});
+			const clientSession = await getSession(req, res);
 			//assert(!clientSession.did, "session already exists");
 			clientSession.did = session.did;
 			await clientSession.save();
@@ -97,10 +98,7 @@ export const createRouter = (ctx: Ctx) => {
 	});
 
 	router.get("/logout", async (req, res) => {
-		const session = await getIronSession<Session>(req, res, {
-			cookieName: "plonk-id",
-			password: env.PLONK_COOKIE_SECRET,
-		});
+		const session = await getSession(req, res);
 		session.destroy();
 		return res.redirect("/");
 	});
@@ -137,7 +135,7 @@ export const createRouter = (ctx: Ctx) => {
 			.selectAll()
 			.where("authorDid", "=", authorDid)
 			.execute();
-		let didHandleMap = {};
+		let didHandleMap: Record<string, string> = {};
 		didHandleMap[authorDid] = await ctx.resolver.resolveDidToHandle(authorDid);
 		const ownAgent = await getSessionAgent(req, res, ctx);
 		if (!ownAgent) {
