@@ -26,7 +26,7 @@ async function getSessionAgent(
 ) {
 	const session = await getIronSession<Session>(req, res, {
 		cookieName: "plonk-id",
-		password: env.COOKIE_SECRET,
+		password: env.PLONK_COOKIE_SECRET,
 	});
 	if (!session.did) return null;
 	try {
@@ -59,7 +59,7 @@ export const createRouter = (ctx: Ctx) => {
 			const { session } = await ctx.oauthClient.callback(params);
 			const clientSession = await getIronSession<Session>(req, res, {
 				cookieName: "plonk-id",
-				password: env.COOKIE_SECRET,
+				password: env.PLONK_COOKIE_SECRET,
 			});
 			//assert(!clientSession.did, "session already exists");
 			clientSession.did = session.did;
@@ -99,7 +99,7 @@ export const createRouter = (ctx: Ctx) => {
 	router.get("/logout", async (req, res) => {
 		const session = await getIronSession<Session>(req, res, {
 			cookieName: "plonk-id",
-			password: env.COOKIE_SECRET,
+			password: env.PLONK_COOKIE_SECRET,
 		});
 		session.destroy();
 		return res.redirect("/");

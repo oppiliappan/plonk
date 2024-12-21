@@ -48,5 +48,56 @@
       });
 
     formatter = forAllSystems (system: nixpkgsFor."${system}".alejandra);
+
+    nixosModules.default = {
+      config,
+      pkgs,
+      lib,
+      ...
+    }:
+      with lib; {
+        options = {
+          services.plonk = {
+            enable = mkOption {
+              type = types.bool;
+              default = false;
+              description = "Enable plonk";
+            };
+            port = mkOption {
+              type = types.int;
+              default = 3000;
+              description = "Port to run plonk on";
+            };
+            cookie_secret = mkOption {
+              type = types.string;
+              default = "00000000000000000000000000000000";
+              description = "Cookie secret";
+            };
+          };
+        };
+
+        config = mkIf config.services.plonk.enable {
+          nixpkgs.overlays = [self.overlays.default];
+          systemd.services.plonk = {
+            description = "plonk service";
+            wantedBy = ["multi-user.target"];
+
+            serviceConfig = {
+              ListenStream = "0.0.0.0:${toString config.services.plonk.port}";
+              ExecStart = "${pkgs.plonk}/bin/plonk";
+              Restart = "always";
+            };
+
+            environment = {
+              PLONK_PORT = "${toString config.services.plonk.port}";
+              PLONK_NODE_ENV = "production";
+              PLONK_HOST = "localhost";
+              PLONK_PUBLIC_URL = "plonk.li";
+              PLONK_DB_PATH = "plonk.db";
+              PLONK_COOKIE_SECRET = config.services.plonk.cookie_secret;
+            };
+          };
+        };
+      };
   };
 }
