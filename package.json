@@ -49,6 +49,9 @@
       "!src/**/__tests__/**",
       "!src/**/*.test.*"
     ],
+    "loader": {
+      ".pug": "copy"
+    },
     "splitting": false,
     "sourcemap": true,
     "clean": true

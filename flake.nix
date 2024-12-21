@@ -23,8 +23,20 @@
         buildNpmPackage {
           inherit pname version;
           src = ./.;
+          nativeBuildInputs = [makeBinaryWrapper];
           packageJson = ./package.json;
           buildPhase = "npm run build";
+          installPhase = ''
+            runHook preInstall
+
+            mkdir -p $out/bin
+            cp -r ./* $out/
+
+            makeBinaryWrapper ${nodejs}/bin/node $out/bin/$pname \
+            --prefix PATH : ${lib.makeBinPath [nodejs]} \
+            --add-flags "$out/dist/index.js"
+          '';
+
           npmDepsHash = "sha256-qGCbaFAHd/s9hOTWMjHCam6Kf6pU6IWPybfwYh0sOwc=";
         };
     };

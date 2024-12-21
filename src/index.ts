@@ -29,7 +29,7 @@ export class Server {
 		public app: express.Application,
 		public server: http.Server,
 		public ctx: Ctx,
-	) { }
+	) {}
 
 	static async create() {
 		const db: Database = createDb(env.PLONK_DB_PATH);

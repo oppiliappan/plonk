@@ -16,14 +16,17 @@ type Session = {
 	did: string;
 };
 
-async function getSession(req: IncomingMessage, res: ServerResponse<IncomingMessage>) {
+async function getSession(
+	req: IncomingMessage,
+	res: ServerResponse<IncomingMessage>,
+) {
 	return await getIronSession<Session>(req, res, {
 		cookieName: "plonk-id",
 		password: env.PLONK_COOKIE_SECRET,
 		cookieOptions: {
-			secure: env.PLONK_NODE_ENV === 'production',
+			secure: env.PLONK_NODE_ENV === "production",
 		},
-	})
+	});
 }
 
 async function getSessionAgent(
@@ -45,12 +48,6 @@ async function getSessionAgent(
 
 export const createRouter = (ctx: Ctx) => {
 	const router = express.Router();
-
-	// Static assets
-	router.use(
-		"/public",
-		express.static(path.join(__dirname, "pages", "public")),
-	);
 
 	// OAuth metadata
 	router.get("/client-metadata.json", async (_req, res) => {
