@@ -5,14 +5,14 @@ import { SessionStore, StateStore } from "./storage";
 
 export const createClient = async (db: Database) => {
 	const publicUrl = env.PLONK_PUBLIC_URL;
-	const url = publicUrl || `http://127.0.0.1:${env.PLONK_PORT}`;
+	const url = publicUrl || `http://${env.PLONK_HOST}:${env.PLONK_PORT}`;
 	const enc = encodeURIComponent;
 	return new NodeOAuthClient({
 		clientMetadata: {
 			client_name: "plonk.li",
 			client_id: publicUrl
 				? `${url}/client-metadata.json`
-				: `http://localhost?redirect_uri=${enc(`${url}/oauth/callback`)}&scope=${enc("atproto transition:generic")}`,
+				: `http://${env.PLONK_HOST}?redirect_uri=${enc(`${url}/oauth/callback`)}&scope=${enc("atproto transition:generic")}`,
 			client_uri: url,
 			redirect_uris: [`${url}/oauth/callback`],
 			scope: "atproto transition:generic",
