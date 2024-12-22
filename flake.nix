@@ -104,7 +104,7 @@
               PLONK_PORT = "${toString config.services.plonk.port}";
               PLONK_NODE_ENV = "production";
               PLONK_HOST = "localhost";
-              PLONK_PUBLIC_URL = "http://plonk.laurel";
+              PLONK_PUBLIC_URL = "https://plonk.li";
               PLONK_DB_PATH = "plonk.db";
               PLONK_COOKIE_SECRET = config.services.plonk.cookie_secret;
             };
