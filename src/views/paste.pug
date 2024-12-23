@@ -4,13 +4,13 @@ include ../mixins/header
 include ../mixins/utils
 doctype html
 html
-  +head(paste.title)
+  +head(`${paste.title} · ${didHandleMap[paste.authorDid]}`)
   body
     main#content
       +header(ownDid, didHandleMap)
       h1 #{paste.title}
       p 
-        | by @#{didHandleMap[paste.authorDid]} ·
+        | @#{didHandleMap[paste.authorDid]} ·
         | #{timeDifference(now, Date.parse(paste.createdAt))} ago ·
         | #{paste.lang} · 
         | #{paste.code.split('\n').length} loc · 
@@ -19,15 +19,19 @@ html
         | #{paste.code}
       hr
 
-      div.comments
-        each comment in comments
-          div.comment(id=`${encodeURIComponent(comment.uri)}`)
-            p 
-              | by @#{didHandleMap[comment.authorDid]} ·
-              | #{timeDifference(now, Date.parse(paste.createdAt))} ago
-            p 
-              | #{comment.body}
-      hr
+      if comments.length != 0
+        h1 comments
+        div.comments
+          each comment in comments
+            div.comment(id=`${encodeURIComponent(comment.uri)}`)
+              p 
+                a(href=`/u/${comment.authorDid}`)
+                  | @#{didHandleMap[comment.authorDid]}
+                | &nbsp;·
+                | #{timeDifference(now, Date.parse(paste.createdAt))} ago
+              p 
+                pre.comment-body #{comment.body}
+        hr
 
       form(action=`/${encodeURIComponent(paste.uri)}/comment` method="post").post-form
         div.post-row

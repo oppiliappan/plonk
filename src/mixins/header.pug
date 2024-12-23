@@ -1,8 +1,6 @@
 mixin header(ownDid, didHandleMap)
   div.header
     div.left-side
-      if ownDid
-        | logged in as @#{didHandleMap[ownDid]}
     div.right-side
     p
       a(href="/") home

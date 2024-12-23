@@ -5,7 +5,7 @@ import { SessionStore, StateStore } from "./storage";
 
 export const createClient = async (db: Database) => {
 	const publicUrl = env.PLONK_PUBLIC_URL;
-	const url = publicUrl || `http://${env.PLONK_HOST}:${env.PLONK_PORT}`;
+	const url = publicUrl || `http://127.0.0.1:${env.PLONK_PORT}`;
 	const enc = encodeURIComponent;
 	return new NodeOAuthClient({
 		clientMetadata: {

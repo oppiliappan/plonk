@@ -81,7 +81,7 @@
               description = "Port to run plonk on";
             };
             cookie_secret = mkOption {
-              type = types.string;
+              type = types.str;
               default = "00000000000000000000000000000000";
               description = "Cookie secret";
             };

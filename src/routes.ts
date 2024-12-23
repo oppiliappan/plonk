@@ -49,6 +49,7 @@ async function getSessionAgent(
 export const createRouter = (ctx: Ctx) => {
 	const router = express.Router();
 
+	router.use("/assets", express.static(path.join(__dirname, "assets")));
 	// OAuth metadata
 	router.get("/client-metadata.json", async (_req, res) => {
 		return res.json(ctx.oauthClient.clientMetadata);
@@ -193,14 +194,16 @@ export const createRouter = (ctx: Ctx) => {
 			authorDid: pasteAuthorDid,
 		};
 
-		const comments = ret.map((row) => {
-			return {
-				uri: row.commentUri,
-				authorDid: row.commentAuthorDid,
-				body: row.commentBody,
-				createdAt: row.commentCreatedAt,
-			};
-		});
+		const comments = ret
+			.filter((row) => row.commentUri)
+			.map((row) => {
+				return {
+					uri: row.commentUri,
+					authorDid: row.commentAuthorDid,
+					body: row.commentBody,
+					createdAt: row.commentCreatedAt,
+				};
+			});
 
 		const ownAgent = await getSessionAgent(req, res, ctx);
 		if (!ownAgent) {
