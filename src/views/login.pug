@@ -1,4 +1,5 @@
 include ../mixins/head
+include ../mixins/footer
 
 doctype html
 html
@@ -10,3 +11,4 @@ html
         div.login-row
           input(type="text" name="handle" placeholder="enter handle" required).login-input-title
           button(type="submit").login-submit-button login
+      +footer()

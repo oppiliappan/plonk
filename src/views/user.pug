@@ -2,6 +2,7 @@
 - var handle = didHandleMap[authorDid]
 include ../mixins/head
 include ../mixins/header
+include ../mixins/footer
 include ../mixins/utils
 include ../mixins/post
 doctype html
@@ -14,3 +15,5 @@ html
       div.timeline
         each paste in pastes
           +post(paste, handle, authorDid)
+
+      +footer()

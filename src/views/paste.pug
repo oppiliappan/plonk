@@ -1,6 +1,7 @@
 - var now = new Date()
 include ../mixins/head
 include ../mixins/header
+include ../mixins/footer
 include ../mixins/utils
 doctype html
 html
@@ -40,7 +41,6 @@ html
                 | #{timeDifference(now, Date.parse(paste.createdAt))} ago
               p 
                 pre.comment-body #{comment.body}
-        hr
 
       if ownDid
         form(action=`/${encodeURIComponent(paste.uri)}/comment` method="post").post-form
@@ -49,7 +49,9 @@ html
 
           div.post-submit-row
             button(type="submit").post-input-submit zonk!
-      else 
+      else
         p
           a(href="/login") login
           |&nbsp;to post a comment
+
+      +footer()

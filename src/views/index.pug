@@ -36,4 +36,5 @@ html
         each paste in pastes
           - var handle = didHandleMap[paste.authorDid]
           +post(paste, handle, paste.authorDid)
+
       +footer()
