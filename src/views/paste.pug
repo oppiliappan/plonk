@@ -15,12 +15,21 @@ html
         | #{paste.lang} · 
         | #{paste.code.split('\n').length} loc · 
         a(href=`/r/${paste.shortUrl}`) raw
+        | &nbsp;·&nbsp;
+        | #{comments.length} #{pluralize(comments.length, 'comment')}
       pre
-        | #{paste.code}
+        code
+          - var lines = paste.code.split(/\r?\n|\r|\n/g)
+          - var tot_chars = lines.length.toString().length
+          each line, idx in lines
+            span.code-line
+              span.code-line-num(id=`L${idx + 1}` style=`min-width: ${tot_chars}ch;`)
+                | #{idx + 1}
+              span.code-line-content #{line}
       hr
 
       if comments.length != 0
-        h1 comments
+        h1(id="comments") comments
         div.comments
           each comment in comments
             div.comment(id=`${encodeURIComponent(comment.uri)}`)
@@ -33,9 +42,14 @@ html
                 pre.comment-body #{comment.body}
         hr
 
-      form(action=`/${encodeURIComponent(paste.uri)}/comment` method="post").post-form
-        div.post-row
-          textarea#code(name="comment" rows="5" placeholder="add a comment" required).post-input-code
+      if ownDid
+        form(action=`/${encodeURIComponent(paste.uri)}/comment` method="post").post-form
+          div.post-row
+            textarea#code(name="comment" rows="5" placeholder="add a comment" required).post-input-code
 
-        div.post-submit-row
-          button(type="submit").post-input-submit zonk!
+          div.post-submit-row
+            button(type="submit").post-input-submit zonk!
+      else 
+        p
+          a(href="/login") login
+          |&nbsp;to post a comment

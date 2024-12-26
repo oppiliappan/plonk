@@ -105,8 +105,20 @@ export const createRouter = (ctx: Ctx) => {
 		const agent = await getSessionAgent(req, res, ctx);
 		const pastes = await ctx.db
 			.selectFrom("paste")
-			.selectAll()
-			.orderBy("indexedAt", "desc")
+			.leftJoin("comment", "comment.pasteUri", "paste.uri")
+			.select([
+				"paste.uri",
+				"paste.shortUrl",
+				"paste.authorDid",
+				"paste.code",
+				"paste.lang",
+				"paste.title",
+				"paste.createdAt",
+				"paste.indexedAt as pasteIndexedAt",
+				ctx.db.fn.count("comment.uri").as("commentCount")
+			])
+			.groupBy("paste.uri")
+			.orderBy("pasteIndexedAt", "desc")
 			.limit(25)
 			.execute();
 
@@ -130,8 +142,21 @@ export const createRouter = (ctx: Ctx) => {
 		const { authorDid } = req.params;
 		const pastes = await ctx.db
 			.selectFrom("paste")
-			.selectAll()
-			.where("authorDid", "=", authorDid)
+			.leftJoin("comment", "comment.pasteUri", "paste.uri")
+			.select([
+				"paste.uri",
+				"paste.shortUrl",
+				"paste.authorDid as pasteAuthorDid",
+				"paste.code",
+				"paste.lang",
+				"paste.title",
+				"paste.createdAt as pasteCreatedAt",
+				"paste.indexedAt as pasteIndexedAt",
+				ctx.db.fn.count("comment.uri").as("commentCount")
+			])
+			.groupBy("paste.uri")
+			.where("pasteAuthorDid", "=", authorDid)
+			.orderBy("pasteCreatedAt", "desc")
 			.execute();
 		let didHandleMap: Record<string, string> = {};
 		didHandleMap[authorDid] = await ctx.resolver.resolveDidToHandle(authorDid);

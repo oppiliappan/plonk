@@ -1,6 +1,7 @@
 include ../mixins/mkPost
 include ../mixins/head
 include ../mixins/header
+include ../mixins/footer
 include ../mixins/utils
 include ../mixins/post
 
@@ -19,6 +20,7 @@ include ../mixins/post
         "c",
         "c#",
         "c++",
+        "cobol",
       ].toSorted())
 doctype html
 html
@@ -34,3 +36,4 @@ html
         each paste in pastes
           - var handle = didHandleMap[paste.authorDid]
           +post(paste, handle, paste.authorDid)
+      +footer()

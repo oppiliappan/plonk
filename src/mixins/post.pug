@@ -13,4 +13,5 @@ mixin post(paste, handle, did)
         | #{paste.lang}
         | ·
         | #{paste.code.split('\n').length} loc
-
+        | ·&nbsp;
+        a(href=`/p/${paste.shortUrl}/#comments`) #{paste.commentCount} #{pluralize(paste.commentCount, 'comment')}
