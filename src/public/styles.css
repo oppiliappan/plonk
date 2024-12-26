@@ -58,7 +58,6 @@ a:visited {
 }
 
 pre {
-  background-color: var(--bg-color-muted);
   padding: 1rem;
   overflow-x: auto;
 }
@@ -66,6 +65,11 @@ pre {
 .comment-body {
   background-color: var(--bg-color);
   padding: 0;
+  margin-top: 0.1rem;
+}
+
+.comment-info {
+  margin-bottom: 0;
 }
 
 input, textarea, select, button {
@@ -137,10 +141,40 @@ hr {
   align-self: flex-end;
 }
 
+.post-link {
+  color: var(--text-color);
+  text-decoration: none;
+}
+.post-link:hover {
+  text-decoration: underline;
+}
+.post-link:visited {
+  color: var(--text-color-muted);
+}
+
+.post-info {
+  margin-top: 0;
+}
+
+.post-info, .comment-info {
+  color: var(--text-color-muted);
+}
+.post-info a, .comment-info a {
+  color: var(--text-color-muted);
+  text-decoration: none;
+}
+.post-info a:visited, .comment-info a:visited {
+  color: var(--text-color-muted);
+}
+.post-info a:hover, .comment-info a:hover {
+  text-decoration: underline;
+}
+
 .timeline, .comments {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding-bottom: 1rem;
 }
 
 .login-input-title {
@@ -181,4 +215,19 @@ select {
 
 .code-line-content {
   color: var(--text-color);
+}
+
+.header, .footer {
+  color: var(--text-color);
+}
+
+.header a, .header a:visited,
+.footer a, .footer a:visited {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
+.header a:hover,
+.footer a:hover {
+  text-decoration: underline;
 }

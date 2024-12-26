@@ -10,13 +10,13 @@ html
     main#content
       +header(ownDid, didHandleMap)
       h1 #{paste.title}
-      p 
+      p.post-info
         | @#{didHandleMap[paste.authorDid]} ·
         | #{timeDifference(now, Date.parse(paste.createdAt))} ago ·
         | #{paste.lang} · 
         | #{paste.code.split('\n').length} loc · 
         a(href=`/r/${paste.shortUrl}`) raw
-        | &nbsp;·&nbsp;
+        | &nbsp;·
         | #{comments.length} #{pluralize(comments.length, 'comment')}
       pre
         code
@@ -34,13 +34,12 @@ html
         div.comments
           each comment in comments
             div.comment(id=`${encodeURIComponent(comment.uri)}`)
-              p 
+              p.comment-info
                 a(href=`/u/${comment.authorDid}`)
                   | @#{didHandleMap[comment.authorDid]}
                 | &nbsp;·
                 | #{timeDifference(now, Date.parse(paste.createdAt))} ago
-              p 
-                pre.comment-body #{comment.body}
+              pre.comment-body #{comment.body}
 
       if ownDid
         form(action=`/${encodeURIComponent(paste.uri)}/comment` method="post").post-form

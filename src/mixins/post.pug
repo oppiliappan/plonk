@@ -1,7 +1,7 @@
 mixin post(paste, handle, did)
   div.post
     p
-      a(href=`/p/${paste.shortUrl}`)
+      a(href=`/p/${paste.shortUrl}`).post-link
         | #{paste.title}
       p.post-info
         | by 
